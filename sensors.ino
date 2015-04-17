@@ -61,12 +61,13 @@ void calib_gyro()
 void IMU_print ()
 {
 
-
-Serial.print(pitch);
+Serial.print(ToDeg(roll));
 Serial.print("     ");
-Serial.print(roll);
+Serial.print(command_roll);
 Serial.print("     ");
-Serial.print(yaw);
+Serial.print(err_roll);
+Serial.print("     ");
+Serial.print(roll_D);
 Serial.print("     ");
 
 
