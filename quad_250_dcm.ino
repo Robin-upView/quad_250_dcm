@@ -143,8 +143,8 @@ float err_yaw;
 float pid_yaw;
 float yaw_I;
 
-float kp = 3.0;
-float ki = 0.9; 
+float kp = 4.0; //3.0 //4.0
+float ki = 0.0; //0.9
 float kd = 0.6;
 
 Servo Servo_1;
@@ -203,7 +203,7 @@ calib_gyro(); //Bias computed once and values stored in program
 
   // Execute the fast loop
   // ---------------------
-  if((micros()-timer)>=5000)   // 10ms => 100 Hz loop rate 
+  if((micros()-timer)>=10000)   // 10ms => 100 Hz loop rate 
   { 
     timer_old = timer;
     timer=micros();
@@ -230,21 +230,21 @@ void fast_Loop()
   Euler_angles();
 
 
-  command_pitch = -(rc[1]-1200.0)/20;
+  command_pitch = -(rc[1]-1200.0)/15;
   err_pitch = command_pitch - ToDeg(pitch);
   pitch_D = -ToDeg(Omega[0]);
   pitch_I += (float)err_pitch*G_Dt; 
   //pitch_I = constrain(pitch_I,-50,50);
-  pid_pitch = err_pitch*kp+pitch_I*ki+pitch_D*kd; //P=10 I=15 D=5 was good //D=8 the limit //P=15 I=30 D=5
+  pid_pitch = err_pitch*4.0+pitch_I*0.0+pitch_D*0.6; //P=10 I=15 D=5 was good //D=8 the limit //P=15 I=30 D=5
   
   
   //ROLL
-  command_roll = (rc[0]-1200.0)/20;
+  command_roll = (rc[0]-1200.0)/15;
   err_roll = command_roll - ToDeg(roll);
   roll_D = -ToDeg(Omega[1]);
   roll_I += (float)err_roll*G_Dt; 
   //roll_I = constrain(roll_I,-50,50);
-  pid_roll = err_roll*kp+roll_I*ki+roll_D*kd;
+  pid_roll = err_roll*4.0+roll_I*0.0+roll_D*0.8;
 
   //IMU_print();
   
@@ -265,6 +265,7 @@ void fast_Loop()
 
     pitch_I=0;
     roll_I=0;
+    yaw_I=0;
   }
   
   
