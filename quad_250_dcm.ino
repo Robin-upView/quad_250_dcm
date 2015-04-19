@@ -138,7 +138,6 @@ float err_yaw;
 float pid_yaw;
 float yaw_I;
 
-<<<<<<< HEAD:quad_250_dcm.ino
 float kp = 4.0; //3.0 //4.0
 float ki = 0.0; //0.9
 float kd = 0.6;
@@ -147,11 +146,7 @@ Servo Servo_1;
 Servo Servo_2;
 Servo Servo_3;
 Servo Servo_4;
-=======
-float kp = 0.5;
-float ki = 0.0; 
-float kd = 0.1;
->>>>>>> origin/master:tiny_quad_dcm.ino
+
 
  
 void setup()
@@ -222,11 +217,7 @@ void fast_Loop()
   Euler_angles();
 
 
-<<<<<<< HEAD:quad_250_dcm.ino
   command_pitch = -(rc[1]-1200.0)/15;
-=======
-  command_pitch = -(rc[2]-1480.0)/10;
->>>>>>> origin/master:tiny_quad_dcm.ino
   err_pitch = command_pitch - ToDeg(pitch);
   pitch_D = -ToDeg(Omega[0]);
   pitch_I += (float)err_pitch*G_Dt; 
@@ -235,11 +226,7 @@ void fast_Loop()
   
   
   //ROLL
-<<<<<<< HEAD:quad_250_dcm.ino
   command_roll = (rc[0]-1200.0)/15;
-=======
-  command_roll = (rc[1]-1480.0)/10;
->>>>>>> origin/master:tiny_quad_dcm.ino
   err_roll = command_roll - ToDeg(roll);
   roll_D = -ToDeg(Omega[1]);
   roll_I += (float)err_roll*G_Dt; 
