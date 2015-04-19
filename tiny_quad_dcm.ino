@@ -35,7 +35,7 @@ float errorYaw[3]= {0,0,0};
 // I2C address 0x69 could be 0x68 depending on setup??.
 int MPU9150_I2C_ADDRESS = 0x68;
 
-volatile unsigned long ulStartPeriod = 0; // set in the interrupt
+volatile unsigned long startPeriod; // set in the interrupt
 volatile boolean bNewThrottleSignal = false; // set in the interrupt and read in the loop
 volatile int rc[7];
 
@@ -117,11 +117,6 @@ double dT;
 int16_t C_X, C_Y, C_Z, G_X, G_Y, G_Z, A_X, A_Y, A_Z; //raw sensor data
 float G_x, G_y, G_z, A_x, A_y, A_z; //calibrated sensor data
 
-float accelerationy[2], accelerationz[2];
-float velocityy[2], velocityz[2];
-float positiony[2];
-float positionz[2];
-unsigned int county,countz ;
 
 float command_pitch;
 float err_pitch;
@@ -143,6 +138,7 @@ float err_yaw;
 float pid_yaw;
 float yaw_I;
 
+<<<<<<< HEAD:quad_250_dcm.ino
 float kp = 4.0; //3.0 //4.0
 float ki = 0.0; //0.9
 float kd = 0.6;
@@ -151,26 +147,22 @@ Servo Servo_1;
 Servo Servo_2;
 Servo Servo_3;
 Servo Servo_4;
+=======
+float kp = 0.5;
+float ki = 0.0; 
+float kd = 0.1;
+>>>>>>> origin/master:tiny_quad_dcm.ino
 
  
 void setup()
 {  
-  pinMode(CH1,OUTPUT);
-  pinMode(CH2,OUTPUT);
-  pinMode(CH3,OUTPUT);
-  pinMode(CH4,OUTPUT);
+  pinMode(3, OUTPUT);  
+  pinMode(9, OUTPUT);  
+  pinMode(10, OUTPUT);  
+  pinMode(11, OUTPUT); 
   
-  Servo_1.attach (CH1, 1000,1900);  //av gauche
-  Servo_2.attach (CH2, 1000,1900);  //ar droit
-  Servo_3.attach (CH3, 1000,1900);  //ar gauche
-  Servo_4.attach (CH4, 1000,1900);  //av droit
+  attachInterrupt(0,calcInput,FALLING); 
   
-  Servo_1.writeMicroseconds(1000);//arrière droit
-  Servo_2.writeMicroseconds(1000);//avant gauche
-  Servo_3.writeMicroseconds(1000);//arrière gauche
-  Servo_4.writeMicroseconds(1000); 
-  
-  attachInterrupt(0,calcInput,CHANGE);
   Serial.begin(115200);
   Wire.begin(0);
   
@@ -178,7 +170,7 @@ void setup()
   
   accelgyro.setSleepEnabled(false);
   
- accelgyro.setFullScaleGyroRange(3); //Gyro scale 2000deg/s
+  accelgyro.setFullScaleGyroRange(3); //Gyro scale 2000deg/s
   delay(1);
   accelgyro.setFullScaleAccelRange(1);//Accel scale 4g
   delay(1);
@@ -188,7 +180,7 @@ void setup()
   delay(1);
   
   //IMU calibration
-calib_gyro(); //Bias computed once and values stored in program
+  calib_gyro(); //Bias computed once and values stored in program
 
 
   
@@ -230,7 +222,11 @@ void fast_Loop()
   Euler_angles();
 
 
+<<<<<<< HEAD:quad_250_dcm.ino
   command_pitch = -(rc[1]-1200.0)/15;
+=======
+  command_pitch = -(rc[2]-1480.0)/10;
+>>>>>>> origin/master:tiny_quad_dcm.ino
   err_pitch = command_pitch - ToDeg(pitch);
   pitch_D = -ToDeg(Omega[0]);
   pitch_I += (float)err_pitch*G_Dt; 
@@ -239,7 +235,11 @@ void fast_Loop()
   
   
   //ROLL
+<<<<<<< HEAD:quad_250_dcm.ino
   command_roll = (rc[0]-1200.0)/15;
+=======
+  command_roll = (rc[1]-1480.0)/10;
+>>>>>>> origin/master:tiny_quad_dcm.ino
   err_roll = command_roll - ToDeg(roll);
   roll_D = -ToDeg(Omega[1]);
   roll_I += (float)err_roll*G_Dt; 
@@ -251,13 +251,18 @@ void fast_Loop()
   //YAW
   err_yaw = ToDeg(Omega[2]);
   yaw_I += (float)err_yaw*G_Dt; 
-  pid_yaw = err_yaw*6.0+yaw_I*6.0;
+  pid_yaw = err_yaw*1.0+yaw_I;
   // pid_yaw=0;
   //Throttle
 
-  throttle = constrain(rc[2]*1.20,1000,1900);
+    throttle = constrain((rc[0]-1140)/2.0,0,255);
+  //fail safe
+  if(rc[1]>1900)
+  {
+    throttle=0;
+  }
 
-  if(throttle < 1100)
+  if(throttle < 25)
   {
     pid_pitch=0;
     pid_roll=0;
@@ -268,12 +273,13 @@ void fast_Loop()
     yaw_I=0;
   }
   
+  IMU_print ();
   
 
-  Servo_2.writeMicroseconds(constrain(throttle+pid_roll-pid_pitch+pid_yaw,1000,1900));//arrière droit
-  Servo_1.writeMicroseconds(constrain(throttle-pid_roll+pid_pitch+pid_yaw,1000,1900));//avant gauche
-  Servo_3.writeMicroseconds(constrain(throttle-pid_roll-pid_pitch-pid_yaw,1000,1900));//arrière gauche
-  Servo_4.writeMicroseconds(constrain(throttle+pid_roll+pid_pitch-pid_yaw,1000,1900));//avant droit
+  analogWrite(3, constrain(throttle+pid_roll-pid_pitch+pid_yaw,0,255));//arrière droit
+  analogWrite(9, constrain(throttle-pid_roll+pid_pitch+pid_yaw,0,255));//avant gauche
+  analogWrite(10, constrain(throttle-pid_roll-pid_pitch-pid_yaw,0,255));//arrière gauche
+  analogWrite(11, constrain(throttle+pid_roll+pid_pitch-pid_yaw,0,255));//avant droit
 
 
 /*
@@ -286,28 +292,24 @@ analogWrite(11, 0);//avant droit
 
 void calcInput()
 {
-  static unsigned int nThrottleIn;
+  //static variables are not reset when we exit the function
+  static unsigned int pulseIn;
   static int channel;
+  
+      //length of current pulse
+      pulseIn = (int)(micros() - startPeriod);
+      
+      //remember the time for next loop
+      startPeriod = micros();
 
-  if(digitalRead(2) == HIGH)
-  { 
-    ulStartPeriod = micros();
-  }
-  else
-  {
-    if(ulStartPeriod)
-    {
-      nThrottleIn = (int)(micros() - ulStartPeriod);
-      ulStartPeriod = 0;
-
-      if(nThrottleIn >2000){
+      //channel detector
+      if(pulseIn >2000){
         channel = 0;
       }
+      //store value
       else
       {
-        rc[channel]=nThrottleIn;
-        channel++;
+        rc[channel]=pulseIn;
+        channel++; //increment channel for next time
       }
-    }
-  }
 }
