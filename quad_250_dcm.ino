@@ -5,6 +5,7 @@
 #include "I2Cdev.h"
 
 MPU6050 accelgyro;
+volatile unsigned long ulStartPeriod = 0; // set in the interrupt
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
@@ -151,12 +152,23 @@ Servo Servo_4;
  
 void setup()
 {  
-  pinMode(3, OUTPUT);  
-  pinMode(9, OUTPUT);  
-  pinMode(10, OUTPUT);  
-  pinMode(11, OUTPUT); 
+  pinMode(CH1,OUTPUT);
+  pinMode(CH2,OUTPUT);
+  pinMode(CH3,OUTPUT);
+  pinMode(CH4,OUTPUT);
   
-  attachInterrupt(0,calcInput,FALLING); 
+  Servo_1.attach (CH1, 1000,1900);  //av gauche
+  Servo_2.attach (CH2, 1000,1900);  //ar droit
+  Servo_3.attach (CH3, 1000,1900);  //ar gauche
+  Servo_4.attach (CH4, 1000,1900);  //av droit
+  
+  Servo_1.writeMicroseconds(1000);//arrière droit
+  Servo_2.writeMicroseconds(1000);//avant gauche
+  Servo_3.writeMicroseconds(1000);//arrière gauche
+  Servo_4.writeMicroseconds(1000);
+
+
+  attachInterrupt(0,calcInput,CHANGE);
   
   Serial.begin(115200);
   Wire.begin(0);
@@ -222,7 +234,7 @@ void fast_Loop()
   pitch_D = -ToDeg(Omega[0]);
   pitch_I += (float)err_pitch*G_Dt; 
   //pitch_I = constrain(pitch_I,-50,50);
-  pid_pitch = err_pitch*4.0+pitch_I*0.0+pitch_D*0.6; //P=10 I=15 D=5 was good //D=8 the limit //P=15 I=30 D=5
+  pid_pitch = err_pitch*4.0+pitch_I*0.6+pitch_D*0.8; //P=10 I=15 D=5 was good //D=8 the limit //P=15 I=30 D=5
   
   
   //ROLL
@@ -231,29 +243,25 @@ void fast_Loop()
   roll_D = -ToDeg(Omega[1]);
   roll_I += (float)err_roll*G_Dt; 
   //roll_I = constrain(roll_I,-50,50);
-  pid_roll = err_roll*4.0+roll_I*0.0+roll_D*0.8;
+  pid_roll = err_roll*2.0+roll_I*0.3+roll_D*0.4;//P=3 is good
 
   //IMU_print();
   
   //YAW
   err_yaw = ToDeg(Omega[2]);
   yaw_I += (float)err_yaw*G_Dt; 
-  pid_yaw = err_yaw*1.0+yaw_I;
+  pid_yaw = err_yaw*6.0+yaw_I*6.0;
   // pid_yaw=0;
   //Throttle
 
-    throttle = constrain((rc[0]-1140)/2.0,0,255);
-  //fail safe
-  if(rc[1]>1900)
-  {
-    throttle=0;
-  }
+  throttle = constrain(rc[2]*1.20,1000,1900);
 
-  if(throttle < 25)
+  if(throttle < 1100)
   {
     pid_pitch=0;
     pid_roll=0;
     pid_yaw=0;
+
 
     pitch_I=0;
     roll_I=0;
@@ -263,10 +271,11 @@ void fast_Loop()
   IMU_print ();
   
 
-  analogWrite(3, constrain(throttle+pid_roll-pid_pitch+pid_yaw,0,255));//arrière droit
-  analogWrite(9, constrain(throttle-pid_roll+pid_pitch+pid_yaw,0,255));//avant gauche
-  analogWrite(10, constrain(throttle-pid_roll-pid_pitch-pid_yaw,0,255));//arrière gauche
-  analogWrite(11, constrain(throttle+pid_roll+pid_pitch-pid_yaw,0,255));//avant droit
+  Servo_2.writeMicroseconds(constrain(throttle+pid_roll-pid_pitch+pid_yaw,1000,1900));//arrière droit
+  Servo_1.writeMicroseconds(constrain(throttle-pid_roll+pid_pitch+pid_yaw,1000,1900));//avant gauche
+  Servo_3.writeMicroseconds(constrain(throttle-pid_roll-pid_pitch-pid_yaw,1000,1900));//arrière gauche
+  Servo_4.writeMicroseconds(constrain(throttle+pid_roll+pid_pitch-pid_yaw,1000,1900));//avant droit
+
 
 
 /*
@@ -279,24 +288,28 @@ analogWrite(11, 0);//avant droit
 
 void calcInput()
 {
-  //static variables are not reset when we exit the function
-  static unsigned int pulseIn;
+  static unsigned int nThrottleIn;
   static int channel;
-  
-      //length of current pulse
-      pulseIn = (int)(micros() - startPeriod);
-      
-      //remember the time for next loop
-      startPeriod = micros();
 
-      //channel detector
-      if(pulseIn >2000){
+  if(digitalRead(2) == HIGH)
+  { 
+    ulStartPeriod = micros();
+  }
+  else
+  {
+    if(ulStartPeriod)
+    {
+      nThrottleIn = (int)(micros() - ulStartPeriod);
+      ulStartPeriod = 0;
+
+      if(nThrottleIn >2000){
         channel = 0;
       }
-      //store value
       else
       {
-        rc[channel]=pulseIn;
-        channel++; //increment channel for next time
+        rc[channel]=nThrottleIn;
+        channel++;
       }
+    }
+  }
 }
